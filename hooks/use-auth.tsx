@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 type User = {
   id: string;
@@ -34,7 +34,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { toast } = useToast();
   const supabase = createClient();
 
   useEffect(() => {
@@ -44,8 +43,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } = await supabase.auth.getSession();
 
       if (session) {
-        // For MVP purposes, we'll mock user data
-        // In a real app, you'd fetch this from a users table
         setUser({
           id: session.user.id,
           email: session.user.email,
@@ -98,18 +95,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
 
-      toast({
-        title: "Account created!",
-        description: "Please check your email to confirm your account.",
-      });
-      
+      toast.success("Account created! Please check your email to confirm your account.");
       router.push('/login');
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
+      let message = "Something went wrong";
+      if (error && typeof error === "object" && "message" in error && typeof (error as any).message === "string") {
+        message = (error as any).message;
+      }
+      toast.error(message);
     }
   };
 
@@ -124,19 +117,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
 
-      toast({
-        title: "Welcome back!",
-        description: "You've successfully signed in.",
-      });
-      
+      toast.success("Welcome back! You've successfully signed in.");
       router.push('/dashboard');
       router.refresh();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Invalid credentials",
-        variant: "destructive",
-      });
+      let message = "Invalid credentials";
+      if (error && typeof error === "object" && "message" in error && typeof (error as any).message === "string") {
+        message = (error as any).message;
+      }
+      toast.error(message);
     }
   };
 
@@ -145,10 +134,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     router.push('/');
     router.refresh();
-    toast({
-      title: "Signed out",
-      description: "You've been successfully signed out.",
-    });
+    toast.success("You've been successfully signed out.");
   };
 
   return (

@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, HelpCircle, AlertCircle } from "lucide-react";
@@ -6,21 +8,18 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge";
 import { useStripe } from "@/hooks/use-stripe";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { products } from "@/stripe-config";
 
 export function PricingSection() {
   const [billingPeriod] = useState<"monthly" | "annual">("monthly");
   const { createCheckoutSession } = useStripe();
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const handlePurchase = async (productId: 'pro' | 'team') => {
     if (!user) {
-      toast({
-        title: "Sign in required",
-        description: "Please sign in to purchase a subscription",
-        variant: "destructive",
+      toast.error("Please sign in to purchase a subscription", {
+        description: "Sign in required",
       });
       return;
     }
@@ -28,10 +27,9 @@ export function PricingSection() {
     try {
       await createCheckoutSession(productId);
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to start checkout process",
-        variant: "destructive",
+      const errorMsg = (error instanceof Error && error.message) ? error.message : "Failed to start checkout process";
+      toast.error(errorMsg, {
+        description: "Error",
       });
     }
   };

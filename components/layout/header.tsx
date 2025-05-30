@@ -92,8 +92,8 @@ export function Header() {
           
           {user ? (
             <>
-              <Link href="/dashboard\" className="hidden md:block">
-                <Button variant="ghost\" size="sm">
+              <Link href="/dashboard" className="hidden md:block">
+                <Button variant="ghost" size="sm">
                   Dashboard
                 </Button>
               </Link>
@@ -158,7 +158,7 @@ export function Header() {
                 <div className="h-px bg-border my-2" />
                 {user ? (
                   <>
-                    <Link href="/dashboard\" className="flex items-center py-2">
+                    <Link href="/dashboard" className="flex items-center py-2">
                       Dashboard
                     </Link>
                     <Link href="/account" className="flex items-center py-2">

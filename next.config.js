@@ -1,10 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  eslint: {
-    ignoreDuringBuilds: true,
+  webpack: (config) => {
+    // Exclude supabase functions from webpack processing
+    config.module.rules.push({
+      test: /supabase[/\\]functions/,
+      use: 'null-loader'
+    })
+    return config
   },
-  images: { unoptimized: true },
-};
+  outputFileTracingExcludes: {
+    '*': ['supabase/functions/**/*'],
+  },
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

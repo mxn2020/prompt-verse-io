@@ -53,7 +53,13 @@ export function FeaturesSection() {
   );
 }
 
-function FeatureCard({ icon, title, description }) {
+interface FeatureCardProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}
+
+function FeatureCard({ icon, title, description }: FeatureCardProps) {
   return (
     <Card className="transition-all duration-300 hover:shadow-md hover:border-primary/20">
       <CardHeader className="pb-2">
