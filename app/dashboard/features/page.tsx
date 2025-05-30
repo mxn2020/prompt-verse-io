@@ -2,8 +2,6 @@ import { DashboardHeader } from "@/components/dashboard/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bot, Braces, GitMerge, Layers, Share2, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
 export default function FeaturesPage() {
   return (

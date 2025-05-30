@@ -4,17 +4,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { 
   GripVertical, 
-  Plus, 
   X, 
   MessageSquare, 
   User, 
   Bot, 
   Settings, 
   Copy,
-  Trash,
   Puzzle
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +74,7 @@ export function PromptsEditor() {
     );
   };
 
-  const handleDragEnd = (result: any) => {
+  const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
     const items = Array.from(sections);
