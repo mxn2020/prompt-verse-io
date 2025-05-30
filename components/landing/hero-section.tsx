@@ -2,8 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ChevronRight, Sparkles, Zap, Layers, Bot } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { ChevronRight, Sparkles, Zap, Layers } from 'lucide-react';
 
 export function HeroSection() {
   return (

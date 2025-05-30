@@ -1,4 +1,4 @@
-import { Bot, Braces, GitMerge, Layers, Share2, Sparkles, Users } from "lucide-react";
+import { Bot, Braces, GitMerge, Layers, Sparkles, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function FeaturesSection() {

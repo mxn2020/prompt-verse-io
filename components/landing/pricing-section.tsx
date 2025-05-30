@@ -3,7 +3,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, HelpCircle, AlertCircle } from "lucide-react";
-import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { useStripe } from "@/hooks/use-stripe";
@@ -12,7 +11,6 @@ import { toast } from "sonner";
 import { products } from "@/stripe-config";
 
 export function PricingSection() {
-  const [billingPeriod] = useState<"monthly" | "annual">("monthly");
   const { createCheckoutSession } = useStripe();
   const { user } = useAuth();
 
