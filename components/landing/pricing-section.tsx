@@ -1,15 +1,40 @@
-"use client";
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, HelpCircle, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
+import { useStripe } from "@/hooks/use-stripe";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
+import { products } from "@/stripe-config";
 
 export function PricingSection() {
-  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
+  const [billingPeriod] = useState<"monthly" | "annual">("monthly");
+  const { createCheckoutSession } = useStripe();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  const handlePurchase = async (productId: 'pro' | 'team') => {
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to purchase a subscription",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createCheckoutSession(productId);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to start checkout process",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <section className="w-full py-12 md:py-24 lg:py-32" id="pricing">
@@ -21,26 +46,6 @@ export function PricingSection() {
               Choose the plan that fits your needs. All plans include core features with different limits.
             </p>
           </div>
-          
-          <div className="flex items-center space-x-4 mt-6">
-            <Button
-              variant={billingPeriod === "monthly" ? "default" : "outline"}
-              onClick={() => setBillingPeriod("monthly")}
-              className="rounded-full"
-            >
-              Monthly
-            </Button>
-            <Button
-              variant={billingPeriod === "annual" ? "default" : "outline"}
-              onClick={() => setBillingPeriod("annual")}
-              className="rounded-full"
-            >
-              Annual
-              <Badge variant="outline" className="ml-2 bg-primary/20 text-primary">
-                Save 17%
-              </Badge>
-            </Button>
-          </div>
         </div>
         
         <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8 mt-12">
@@ -48,8 +53,8 @@ export function PricingSection() {
           <PricingCard
             title="Free"
             description="For individuals getting started with prompt engineering."
-            price={billingPeriod === "monthly" ? "$0" : "$0"}
-            period={billingPeriod === "monthly" ? "month" : "year"}
+            price="$0"
+            period="month"
             features={[
               { text: "10 prompts", included: true },
               { text: "10 modules", included: true },
@@ -65,14 +70,15 @@ export function PricingSection() {
             buttonText="Get Started"
             buttonVariant="outline"
             popular={false}
+            onPurchase={() => {}}
           />
           
           {/* Pro Plan */}
           <PricingCard
-            title="Pro"
-            description="For professionals who need advanced prompt engineering tools."
-            price={billingPeriod === "monthly" ? "$12" : "$10"}
-            period={billingPeriod === "monthly" ? "month" : "month, billed annually"}
+            title={products.pro.name}
+            description={products.pro.description}
+            price="$12"
+            period="month"
             features={[
               { text: "Unlimited prompts", included: true },
               { text: "Unlimited modules", included: true },
@@ -86,17 +92,18 @@ export function PricingSection() {
               { text: "Email support", included: true },
               { text: "API access (rate limited)", included: true },
             ]}
-            buttonText="Upgrade to Pro"
+            buttonText={user ? "Upgrade to Pro" : "Sign up"}
             buttonVariant="default"
             popular={true}
+            onPurchase={() => handlePurchase('pro')}
           />
           
           {/* Team Plan */}
           <PricingCard
-            title="Team"
-            description="For teams collaborating on prompt engineering projects."
-            price={billingPeriod === "monthly" ? "$16" : "$14"}
-            period={billingPeriod === "monthly" ? "user/month" : "user/month, billed annually"}
+            title={products.team.name}
+            description={products.team.description}
+            price="$16"
+            period="user/month"
             features={[
               { text: "Everything in Pro", included: true },
               { text: "Team collaboration", included: true },
@@ -106,15 +113,16 @@ export function PricingSection() {
               { text: "Higher API rate limits", included: true },
               { text: "Analytics dashboard", included: true, hint: "Track team usage and performance" },
             ]}
-            buttonText="Contact Sales"
+            buttonText={user ? "Upgrade to Team" : "Sign up"}
             buttonVariant="outline"
             popular={false}
+            onPurchase={() => handlePurchase('team')}
           />
         </div>
         
         <div className="mt-12 text-center">
           <p className="text-muted-foreground">
-            Need something custom? <Link href="/contact" className="font-medium text-primary underline-offset-4 hover:underline">Contact us</Link> for enterprise pricing.
+            Need something custom? <a href="/contact" className="font-medium text-primary underline-offset-4 hover:underline">Contact us</a> for enterprise pricing.
           </p>
         </div>
       </div>
@@ -164,6 +172,7 @@ interface PricingCardProps {
   buttonText: string;
   buttonVariant: "default" | "outline" | "secondary";
   popular: boolean;
+  onPurchase: () => void;
 }
 
 function PricingCard({
@@ -174,7 +183,8 @@ function PricingCard({
   features,
   buttonText,
   buttonVariant,
-  popular
+  popular,
+  onPurchase
 }: PricingCardProps) {
   return (
     <Card className={`flex flex-col justify-between ${popular ? "border-primary shadow-lg shadow-primary/20" : ""}`}>
@@ -204,9 +214,9 @@ function PricingCard({
         <Button
           variant={buttonVariant}
           className="w-full"
-          asChild
+          onClick={onPurchase}
         >
-          <Link href="/signup">{buttonText}</Link>
+          {buttonText}
         </Button>
       </CardFooter>
     </Card>
