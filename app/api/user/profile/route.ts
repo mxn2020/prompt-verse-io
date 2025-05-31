@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth/server';
+import { getCurrentUserServer } from '@/lib/auth/server';
 import { UserService } from '@/lib/services/user.service';
 import { updateProfileSchema } from '@/lib/schemas/user';
 
 export async function GET() {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserServer();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -20,7 +20,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getCurrentUserServer();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

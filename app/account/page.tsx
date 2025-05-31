@@ -1,5 +1,6 @@
-import { requireAuth, getUserProfile } from '@/lib/auth/server';
+// app/account/page.tsx
 import { AccountPageClient } from '@/components/account/account-page-client';
+import { requireAuth, getUserProfile } from '@/lib/auth';
 
 export const dynamic = "force-dynamic";
 

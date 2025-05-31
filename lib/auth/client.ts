@@ -1,18 +1,10 @@
-import { createClient } from '@/lib/supabase/client';
+import { AuthService } from '@/lib/services/auth.service';
 import type { User } from '@supabase/supabase-js';
-import { useAuth } from "@/hooks/use-auth";
 
 export async function getCurrentUserClient(): Promise<User | null> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  return AuthService.getCurrentUserClient();
 }
 
-export async function isUserLoggedInClient(): Promise<boolean> {
-  const user = await getCurrentUserClient();
-  return !!user;
-}
-
-export function useCurrentUser() {
-  return useAuth().user;
+export async function getUserProfileClient(userId: string) {
+  return AuthService.getUserProfile(userId, false);
 }
