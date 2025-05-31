@@ -1,7 +1,7 @@
--- Initial schema for Prompt-Verse application
--- This migration creates the core tables for the prompt engineering platform
+-- Complete Supabase migration with fixed RLS policies
+-- This migration creates the core tables and non-recursive RLS policies
 
--- Enable Row Level Security
+-- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Create custom types
@@ -9,6 +9,8 @@ CREATE TYPE prompt_type AS ENUM ('standard', 'structured', 'modularized', 'advan
 CREATE TYPE visibility_type AS ENUM ('private', 'team', 'public');
 CREATE TYPE flow_status AS ENUM ('draft', 'active', 'paused', 'archived');
 CREATE TYPE agent_status AS ENUM ('inactive', 'active', 'paused', 'error');
+
+-- Create tables
 
 -- User profiles table (extends auth.users)
 CREATE TABLE IF NOT EXISTS user_profiles (
@@ -248,126 +250,164 @@ ALTER TABLE model_patterns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE execution_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE comments ENABLE ROW LEVEL SECURITY;
 
--- Row Level Security Policies
+-- Create helper function to avoid null auth.uid()
+CREATE OR REPLACE FUNCTION get_current_user_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT COALESCE(auth.uid(), '00000000-0000-0000-0000-000000000000'::uuid);
+$$;
 
--- User profiles: users can only see and edit their own profile
-CREATE POLICY "Users can view own profile" ON user_profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON user_profiles FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Users can insert own profile" ON user_profiles FOR INSERT WITH CHECK (auth.uid() = id);
+-- Drop any existing policies first
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (SELECT schemaname, tablename, policyname FROM pg_policies WHERE schemaname = 'public') LOOP
+        EXECUTE 'DROP POLICY IF EXISTS ' || quote_ident(r.policyname) || ' ON ' || quote_ident(r.tablename);
+    END LOOP;
+END
+$$;
 
--- Teams: members can view, owners can manage
-CREATE POLICY "Team members can view team" ON teams FOR SELECT USING (
-    id IN (SELECT team_id FROM team_memberships WHERE user_id = auth.uid())
+-- RLS Policies - Simple and non-recursive
+
+-- User profiles: users can only access their own profile
+CREATE POLICY "user_profiles_all" ON user_profiles 
+USING (id = get_current_user_id());
+
+-- Teams: owner can manage, others cannot access (simplified for now)
+CREATE POLICY "teams_owner_access" ON teams 
+USING (owner_id = get_current_user_id());
+
+-- Team memberships: users can see their own memberships, team owners can manage all
+CREATE POLICY "team_memberships_user_own" ON team_memberships 
+FOR SELECT USING (user_id = get_current_user_id());
+
+CREATE POLICY "team_memberships_owner_manage" ON team_memberships 
+USING (team_id IN (SELECT id FROM teams WHERE owner_id = get_current_user_id()));
+
+CREATE POLICY "team_memberships_insert" ON team_memberships 
+FOR INSERT WITH CHECK (
+    user_id = get_current_user_id() OR 
+    team_id IN (SELECT id FROM teams WHERE owner_id = get_current_user_id())
 );
-CREATE POLICY "Team owners can manage team" ON teams FOR ALL USING (owner_id = auth.uid());
 
--- Team memberships: members can view, owners can manage
-CREATE POLICY "Team members can view memberships" ON team_memberships FOR SELECT USING (
-    team_id IN (SELECT team_id FROM team_memberships WHERE user_id = auth.uid())
-);
-CREATE POLICY "Team owners can manage memberships" ON team_memberships FOR ALL USING (
-    team_id IN (SELECT id FROM teams WHERE owner_id = auth.uid())
+-- Workspaces: owner + public visibility only (no team complexity for now)
+CREATE POLICY "workspaces_access" ON workspaces 
+FOR SELECT USING (
+    owner_id = get_current_user_id() OR 
+    visibility = 'public'
 );
 
--- Workspaces: owners and team members can access based on visibility
-CREATE POLICY "Workspace access policy" ON workspaces FOR SELECT USING (
-    owner_id = auth.uid() OR
-    visibility = 'public' OR
-    (visibility = 'team' AND team_id IN (
-        SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-    ))
-);
-CREATE POLICY "Workspace owners can manage" ON workspaces FOR ALL USING (owner_id = auth.uid());
+CREATE POLICY "workspaces_manage" ON workspaces 
+USING (owner_id = get_current_user_id());
 
--- Modules: access based on visibility and ownership
-CREATE POLICY "Module access policy" ON modules FOR SELECT USING (
-    owner_id = auth.uid() OR
-    visibility = 'public' OR
-    (visibility = 'team' AND workspace_id IN (
-        SELECT id FROM workspaces WHERE team_id IN (
-            SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-        )
-    ))
+-- Modules: owner + public visibility
+CREATE POLICY "modules_access" ON modules 
+FOR SELECT USING (
+    owner_id = get_current_user_id() OR 
+    visibility = 'public'
 );
-CREATE POLICY "Module owners can manage" ON modules FOR ALL USING (owner_id = auth.uid());
 
--- Similar policies for other tables
-CREATE POLICY "Block access policy" ON blocks FOR SELECT USING (
-    owner_id = auth.uid() OR
-    visibility = 'public' OR
-    (visibility = 'team' AND workspace_id IN (
-        SELECT id FROM workspaces WHERE team_id IN (
-            SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-        )
-    ))
+CREATE POLICY "modules_manage" ON modules 
+USING (owner_id = get_current_user_id());
+
+-- Blocks: owner + public visibility
+CREATE POLICY "blocks_access" ON blocks 
+FOR SELECT USING (
+    owner_id = get_current_user_id() OR 
+    visibility = 'public'
 );
-CREATE POLICY "Block owners can manage" ON blocks FOR ALL USING (owner_id = auth.uid());
 
-CREATE POLICY "Wrapper access policy" ON wrappers FOR SELECT USING (
-    owner_id = auth.uid() OR
-    visibility = 'public' OR
-    (visibility = 'team' AND workspace_id IN (
-        SELECT id FROM workspaces WHERE team_id IN (
-            SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-        )
-    ))
+CREATE POLICY "blocks_manage" ON blocks 
+USING (owner_id = get_current_user_id());
+
+-- Wrappers: owner + public visibility
+CREATE POLICY "wrappers_access" ON wrappers 
+FOR SELECT USING (
+    owner_id = get_current_user_id() OR 
+    visibility = 'public'
 );
-CREATE POLICY "Wrapper owners can manage" ON wrappers FOR ALL USING (owner_id = auth.uid());
 
-CREATE POLICY "Prompt access policy" ON prompts FOR SELECT USING (
-    owner_id = auth.uid() OR
-    visibility = 'public' OR
-    (visibility = 'team' AND workspace_id IN (
-        SELECT id FROM workspaces WHERE team_id IN (
-            SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-        )
-    ))
+CREATE POLICY "wrappers_manage" ON wrappers 
+USING (owner_id = get_current_user_id());
+
+-- Prompts: owner + public visibility
+CREATE POLICY "prompts_access" ON prompts 
+FOR SELECT USING (
+    owner_id = get_current_user_id() OR 
+    visibility = 'public'
 );
-CREATE POLICY "Prompt owners can manage" ON prompts FOR ALL USING (owner_id = auth.uid());
 
-CREATE POLICY "Flow access policy" ON flows FOR SELECT USING (
-    owner_id = auth.uid() OR
-    workspace_id IN (
-        SELECT id FROM workspaces WHERE team_id IN (
-            SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-        )
+CREATE POLICY "prompts_manage" ON prompts 
+USING (owner_id = get_current_user_id());
+
+-- Prompt modules: based on prompt ownership
+CREATE POLICY "prompt_modules_access" ON prompt_modules 
+FOR SELECT USING (
+    prompt_id IN (
+        SELECT id FROM prompts 
+        WHERE owner_id = get_current_user_id() OR visibility = 'public'
     )
 );
-CREATE POLICY "Flow owners can manage" ON flows FOR ALL USING (owner_id = auth.uid());
 
-CREATE POLICY "Agent access policy" ON agents FOR SELECT USING (
-    owner_id = auth.uid() OR
-    workspace_id IN (
-        SELECT id FROM workspaces WHERE team_id IN (
-            SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-        )
+CREATE POLICY "prompt_modules_manage" ON prompt_modules 
+USING (
+    prompt_id IN (
+        SELECT id FROM prompts WHERE owner_id = get_current_user_id()
     )
 );
-CREATE POLICY "Agent owners can manage" ON agents FOR ALL USING (owner_id = auth.uid());
 
-CREATE POLICY "Model pattern access policy" ON model_patterns FOR SELECT USING (
-    owner_id = auth.uid() OR
-    visibility = 'public' OR
-    (visibility = 'team' AND workspace_id IN (
-        SELECT id FROM workspaces WHERE team_id IN (
-            SELECT team_id FROM team_memberships WHERE user_id = auth.uid()
-        )
+-- Flows: owner only
+CREATE POLICY "flows_owner_only" ON flows 
+USING (owner_id = get_current_user_id());
+
+-- Flow steps: based on flow ownership
+CREATE POLICY "flow_steps_access" ON flow_steps 
+USING (
+    flow_id IN (
+        SELECT id FROM flows WHERE owner_id = get_current_user_id()
+    )
+);
+
+-- Agents: owner only
+CREATE POLICY "agents_owner_only" ON agents 
+USING (owner_id = get_current_user_id());
+
+-- Model patterns: owner + public visibility
+CREATE POLICY "model_patterns_access" ON model_patterns 
+FOR SELECT USING (
+    owner_id = get_current_user_id() OR 
+    visibility = 'public'
+);
+
+CREATE POLICY "model_patterns_manage" ON model_patterns 
+USING (owner_id = get_current_user_id());
+
+-- Execution logs: users can view their own logs only
+CREATE POLICY "execution_logs_own" ON execution_logs 
+USING (user_id = get_current_user_id());
+
+-- Comments: author can manage, others can read based on target content
+CREATE POLICY "comments_read" ON comments 
+FOR SELECT USING (
+    author_id = get_current_user_id() OR
+    (prompt_id IS NOT NULL AND prompt_id IN (
+        SELECT id FROM prompts 
+        WHERE owner_id = get_current_user_id() OR visibility = 'public'
+    )) OR
+    (flow_id IS NOT NULL AND flow_id IN (
+        SELECT id FROM flows WHERE owner_id = get_current_user_id()
+    )) OR
+    (module_id IS NOT NULL AND module_id IN (
+        SELECT id FROM modules 
+        WHERE owner_id = get_current_user_id() OR visibility = 'public'
     ))
 );
-CREATE POLICY "Model pattern owners can manage" ON model_patterns FOR ALL USING (owner_id = auth.uid());
 
--- Execution logs: users can view their own logs
-CREATE POLICY "Users can view own execution logs" ON execution_logs FOR SELECT USING (user_id = auth.uid());
-CREATE POLICY "Users can insert execution logs" ON execution_logs FOR INSERT WITH CHECK (user_id = auth.uid());
-
--- Comments: users can view and create comments on accessible content
-CREATE POLICY "Comment access policy" ON comments FOR SELECT USING (
-    author_id = auth.uid() OR
-    prompt_id IN (SELECT id FROM prompts WHERE owner_id = auth.uid() OR visibility = 'public') OR
-    flow_id IN (SELECT id FROM flows WHERE owner_id = auth.uid()) OR
-    module_id IN (SELECT id FROM modules WHERE owner_id = auth.uid() OR visibility = 'public')
-);
-CREATE POLICY "Users can manage own comments" ON comments FOR ALL USING (author_id = auth.uid());
+CREATE POLICY "comments_manage" ON comments 
+USING (author_id = get_current_user_id());
 
 -- Functions for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -379,32 +419,64 @@ END;
 $$ language 'plpgsql';
 
 -- Create triggers for updated_at
-CREATE TRIGGER update_user_profiles_updated_at BEFORE UPDATE ON user_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_teams_updated_at BEFORE UPDATE ON teams FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_workspaces_updated_at BEFORE UPDATE ON workspaces FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_modules_updated_at BEFORE UPDATE ON modules FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_blocks_updated_at BEFORE UPDATE ON blocks FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_wrappers_updated_at BEFORE UPDATE ON wrappers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_prompts_updated_at BEFORE UPDATE ON prompts FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_flows_updated_at BEFORE UPDATE ON flows FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_agents_updated_at BEFORE UPDATE ON agents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_model_patterns_updated_at BEFORE UPDATE ON model_patterns FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_comments_updated_at BEFORE UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_profiles_updated_at 
+    BEFORE UPDATE ON user_profiles 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_teams_updated_at 
+    BEFORE UPDATE ON teams 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_workspaces_updated_at 
+    BEFORE UPDATE ON workspaces 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_modules_updated_at 
+    BEFORE UPDATE ON modules 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_blocks_updated_at 
+    BEFORE UPDATE ON blocks 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_wrappers_updated_at 
+    BEFORE UPDATE ON wrappers 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_prompts_updated_at 
+    BEFORE UPDATE ON prompts 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_flows_updated_at 
+    BEFORE UPDATE ON flows 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_agents_updated_at 
+    BEFORE UPDATE ON agents 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_model_patterns_updated_at 
+    BEFORE UPDATE ON model_patterns 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_comments_updated_at 
+    BEFORE UPDATE ON comments 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Create indexes for better performance
-CREATE INDEX idx_prompts_owner_id ON prompts(owner_id);
-CREATE INDEX idx_prompts_workspace_id ON prompts(workspace_id);
-CREATE INDEX idx_prompts_updated_at ON prompts(updated_at DESC);
-CREATE INDEX idx_prompts_starred ON prompts(starred) WHERE starred = true;
-CREATE INDEX idx_prompts_tags ON prompts USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_prompts_owner_id ON prompts(owner_id);
+CREATE INDEX IF NOT EXISTS idx_prompts_workspace_id ON prompts(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_prompts_updated_at ON prompts(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prompts_starred ON prompts(starred) WHERE starred = true;
+CREATE INDEX IF NOT EXISTS idx_prompts_tags ON prompts USING GIN(tags);
 
-CREATE INDEX idx_modules_owner_id ON modules(owner_id);
-CREATE INDEX idx_modules_workspace_id ON modules(workspace_id);
-CREATE INDEX idx_modules_tags ON modules USING GIN(tags);
+CREATE INDEX IF NOT EXISTS idx_modules_owner_id ON modules(owner_id);
+CREATE INDEX IF NOT EXISTS idx_modules_workspace_id ON modules(workspace_id);
+CREATE INDEX IF NOT EXISTS idx_modules_tags ON modules USING GIN(tags);
 
-CREATE INDEX idx_execution_logs_user_id ON execution_logs(user_id);
-CREATE INDEX idx_execution_logs_created_at ON execution_logs(created_at DESC);
-CREATE INDEX idx_execution_logs_prompt_id ON execution_logs(prompt_id);
+CREATE INDEX IF NOT EXISTS idx_execution_logs_user_id ON execution_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_execution_logs_created_at ON execution_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_execution_logs_prompt_id ON execution_logs(prompt_id);
 
-CREATE INDEX idx_team_memberships_user_id ON team_memberships(user_id);
-CREATE INDEX idx_team_memberships_team_id ON team_memberships(team_id);
+CREATE INDEX IF NOT EXISTS idx_team_memberships_user_id ON team_memberships(user_id);
+CREATE INDEX IF NOT EXISTS idx_team_memberships_team_id ON team_memberships(team_id);
