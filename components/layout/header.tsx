@@ -69,17 +69,13 @@ export function Header() {
                   </NavigationMenuContent>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/pricing" legacyBehavior passHref>
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                      Pricing
-                    </NavigationMenuLink>
+                  <Link href="/pricing" className={navigationMenuTriggerStyle()}>
+                    Pricing
                   </Link>
                 </NavigationMenuItem>
                 <NavigationMenuItem>
-                  <Link href="/docs" legacyBehavior passHref>
-                    <NavigationMenuLink className={navigationMenuTriggerStyle()}>
-                      Docs
-                    </NavigationMenuLink>
+                  <Link href="/docs" className={navigationMenuTriggerStyle()}>
+                    Docs
                   </Link>
                 </NavigationMenuItem>
               </NavigationMenuList>
