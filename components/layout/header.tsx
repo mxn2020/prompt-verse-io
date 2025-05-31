@@ -30,13 +30,8 @@ import {
 
 export function Header() {
   const { user, signOut } = useAuth();
-  const [isMounted, setIsMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
-  if (!isMounted) {
+  if (!user) {
     return null;
   }
 
