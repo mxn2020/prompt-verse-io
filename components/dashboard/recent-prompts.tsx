@@ -41,7 +41,7 @@ export function RecentPrompts({ initialPrompts = [] }: RecentPromptsProps) {
   const handleDuplicate = (prompt: Prompt) => {
     duplicatePrompt.mutate({
       title: `${prompt.title} (Copy)`,
-      description: prompt.description,
+      description: prompt.description || "",
       content: prompt.content,
       prompt_type: prompt.prompt_type,
       visibility: prompt.visibility,

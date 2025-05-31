@@ -25,7 +25,7 @@ export function DashboardPageClient({ initialPrompts }: DashboardPageClientProps
           <Overview />
         </div>
         <div className="col-span-3">
-          <RecentPrompts prompts={prompts.slice(0, 5)} />
+          <RecentPrompts initialPrompts={prompts.slice(0, 5)} />
         </div>
       </div>
     </div>

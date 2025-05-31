@@ -25,7 +25,15 @@ export async function getUserProfile(userId: string) {
     .single();
   
   if (error) throw error;
-  return data;
+  // Ensure preferences is always an object
+  let preferences: Record<string, any> = {};
+  if (data.preferences && typeof data.preferences === 'object' && !Array.isArray(data.preferences)) {
+    preferences = data.preferences;
+  }
+  return {
+    ...data,
+    preferences,
+  };
 }
 
 export async function isUserLoggedIn(): Promise<boolean> {

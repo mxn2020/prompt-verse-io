@@ -18,5 +18,6 @@ export const updateProfileSchema = z.object({
   preferences: z.record(z.any()).optional(),
 });
 
-export type UserProfile = z.infer<typeof userProfileSchema>;
+export type UserProfile = z.infer<typeof userProfileSchema> & { preferences: Preferences };
 export type UpdateProfileData = z.infer<typeof updateProfileSchema>;
+export type Preferences = Record<string, any>;
