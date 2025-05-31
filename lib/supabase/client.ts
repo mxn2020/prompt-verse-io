@@ -1,10 +1,10 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
-
-// In a real application, these would be environment variables
-// For MVP purposes, we'll use dummy values
-const supabaseUrl = 'https://example.supabase.co';
-const supabaseAnonKey = 'your-anon-key';
+import { createBrowserClient } from '@supabase/ssr'
+import { Database } from './types'
 
 export const createClient = () => {
-  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
-};
+  return createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+}
+

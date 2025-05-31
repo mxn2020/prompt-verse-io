@@ -1,18 +1,94 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
-const data = [
-  { name: "Jan 1", "Standard Prompts": 24, "Structured Prompts": 13, "Modularized Prompts": 5 },
-  { name: "Jan 2", "Standard Prompts": 30, "Structured Prompts": 18, "Modularized Prompts": 8 },
-  { name: "Jan 3", "Standard Prompts": 27, "Structured Prompts": 20, "Modularized Prompts": 12 },
-  { name: "Jan 4", "Standard Prompts": 32, "Structured Prompts": 22, "Modularized Prompts": 15 },
-  { name: "Jan 5", "Standard Prompts": 35, "Structured Prompts": 25, "Modularized Prompts": 18 },
-  { name: "Jan 6", "Standard Prompts": 40, "Structured Prompts": 28, "Modularized Prompts": 20 },
-  { name: "Jan 7", "Standard Prompts": 38, "Structured Prompts": 30, "Modularized Prompts": 25 },
-];
+interface ChartData {
+  name: string;
+  standard: number;
+  structured: number;
+  modularized: number;
+  advanced: number;
+}
 
 export function Overview() {
+  const [data, setData] = useState<ChartData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const supabase = createClient();
+
+  useEffect(() => {
+    const fetchUsageData = async () => {
+      if (!user) return;
+
+      try {
+        // Get execution logs from the last 7 days
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 6);
+
+        const { data: logs, error } = await supabase
+          .from('execution_logs')
+          .select(`
+            created_at,
+            prompts!execution_logs_prompt_id_fkey(prompt_type)
+          `)
+          .eq('user_id', user.id)
+          .gte('created_at', startDate.toISOString())
+          .lte('created_at', endDate.toISOString());
+
+        if (error) {
+          console.error('Error fetching usage data:', error);
+          return;
+        }
+
+        // Group by date and prompt type
+        const chartData: ChartData[] = [];
+        
+        for (let i = 0; i < 7; i++) {
+          const date = new Date();
+          date.setDate(date.getDate() - (6 - i));
+          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          
+          const dayLogs = logs?.filter(log => {
+            const logDate = new Date(log.created_at);
+            return logDate.toDateString() === date.toDateString();
+          }) || [];
+
+          const counts = {
+            standard: dayLogs.filter(log => log.prompts?.prompt_type === 'standard').length,
+            structured: dayLogs.filter(log => log.prompts?.prompt_type === 'structured').length,
+            modularized: dayLogs.filter(log => log.prompts?.prompt_type === 'modularized').length,
+            advanced: dayLogs.filter(log => log.prompts?.prompt_type === 'advanced').length,
+          };
+
+          chartData.push({
+            name: dateStr,
+            ...counts
+          });
+        }
+
+        setData(chartData);
+      } catch (error) {
+        console.error('Error fetching usage data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsageData();
+  }, [user, supabase]);
+
+  if (loading) {
+    return (
+      <div className="h-[350px] flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Loading chart data...</div>
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={350}>
       <BarChart data={data}>
@@ -33,8 +109,11 @@ export function Overview() {
                     {payload.map((p) => (
                       <div key={p.dataKey} className="flex flex-col">
                         <div className="flex items-center gap-1">
-                          <div className={`h-2 w-2 rounded-full bg-${p.color}`} />
-                          <span>{p.dataKey as string}</span>
+                          <div 
+                            className="h-2 w-2 rounded-full" 
+                            style={{ backgroundColor: p.color }}
+                          />
+                          <span className="capitalize">{p.dataKey as string}</span>
                         </div>
                         <div>{p.value}</div>
                       </div>
@@ -43,30 +122,36 @@ export function Overview() {
                 </div>
               );
             }
-
             return null;
           }}
         />
-        <Legend formatter={(value) => <span className="text-xs">{value}</span>} />
+        <Legend formatter={(value) => <span className="text-xs capitalize">{value}</span>} />
         <Bar
-          dataKey="Standard Prompts"
+          dataKey="standard"
           fill="hsl(var(--chart-1))"
           radius={4}
           className="fill-primary"
         />
         <Bar
-          dataKey="Structured Prompts"
+          dataKey="structured"
           fill="hsl(var(--chart-2))"
           radius={4}
           className="fill-blue-500"
         />
         <Bar
-          dataKey="Modularized Prompts"
+          dataKey="modularized"
           fill="hsl(var(--chart-3))"
           radius={4}
           className="fill-green-500"
+        />
+        <Bar
+          dataKey="advanced"
+          fill="hsl(var(--chart-4))"
+          radius={4}
+          className="fill-purple-500"
         />
       </BarChart>
     </ResponsiveContainer>
   );
 }
+
