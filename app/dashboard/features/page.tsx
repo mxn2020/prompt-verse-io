@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Bot, Braces, GitMerge, Layers, Share2, Sparkles } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = 'force-dynamic'
+
 export default function FeaturesPage() {
   return (
     <div className="flex flex-col gap-6">
