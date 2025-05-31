@@ -1,3 +1,5 @@
+'use server';
+
 import { PromptService } from '@/lib/services/prompt.service';
 import { getCurrentUserClient } from '@/lib/auth/client';
 import type { CreatePromptData } from '@/lib/schemas/prompt';

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/server';
 import { PromptService } from '@/lib/services/prompt.service';
-import { updatePromptSchema } from '@/lib/schemas/prompt';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -13,7 +12,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const prompt = await PromptService.getPrompt(params.id, user.id, true);
+    const prompt = await PromptService.getPrompt((await params).id, user.id, true);
     return NextResponse.json(prompt);
   } catch (error) {
     console.error('Error fetching prompt:', error);
@@ -23,7 +22,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -32,8 +31,8 @@ export async function PUT(
     }
 
     const body = await request.json();
-    
-    const updatedPrompt = await PromptService.updatePrompt(params.id, body);
+
+    const updatedPrompt = await PromptService.updatePrompt((await params).id, body);
     return NextResponse.json(updatedPrompt);
   } catch (error) {
     console.error('Error updating prompt:', error);
@@ -43,7 +42,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -51,7 +50,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await PromptService.deletePrompt(params.id);
+    await PromptService.deletePrompt((await params).id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting prompt:', error);

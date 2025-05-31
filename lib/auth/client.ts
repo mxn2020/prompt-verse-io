@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import type { User } from '@supabase/supabase-js';
+import { useAuth } from "@/hooks/use-auth";
 
 export async function getCurrentUserClient(): Promise<User | null> {
   const supabase = createClient();

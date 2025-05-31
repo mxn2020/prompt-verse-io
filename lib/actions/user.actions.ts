@@ -1,3 +1,5 @@
+'use server';
+
 import { UserService } from '@/lib/services/user.service';
 import { getCurrentUserClient } from '@/lib/auth/client';
 import type { UpdateProfileData } from '@/lib/schemas/user';
