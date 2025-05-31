@@ -5,6 +5,8 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 
+export const dynamic = 'force-dynamic'
+
 export default function PromptsPage() {
   return (
     <div className="flex flex-col gap-6">
