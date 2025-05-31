@@ -1,5 +1,3 @@
-'use server'
-
 import { AuthService } from '@/lib/services/auth.service';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
