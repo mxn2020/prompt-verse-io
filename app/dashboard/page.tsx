@@ -3,6 +3,8 @@ import { PromptService } from '@/lib/services/prompt.service';
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { DashboardPageClient } from '@/components/dashboard/dashboard-page-client';
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const user = await requireAuth();
   const supabase = await createServerClient();
