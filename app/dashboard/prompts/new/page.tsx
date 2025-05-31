@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,8 +20,122 @@ import Link from "next/link";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { PromptsEditor } from "@/components/dashboard/prompts/prompts-editor";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
+import type { Database } from "@/lib/supabase/types";
+
+type PromptType = Database['public']['Enums']['prompt_type'];
+type VisibilityType = Database['public']['Enums']['visibility_type'];
+
+interface PromptFormData {
+  title: string;
+  description: string;
+  content: string;
+  prompt_type: PromptType;
+  visibility: VisibilityType;
+  tags: string[];
+  model_settings: {
+    model: string;
+    temperature?: number;
+    max_tokens?: number;
+  };
+}
 
 export default function NewPromptPage() {
+  const [formData, setFormData] = useState<PromptFormData>({
+    title: "",
+    description: "",
+    content: "",
+    prompt_type: "standard",
+    visibility: "private",
+    tags: [],
+    model_settings: {
+      model: "gpt-4"
+    }
+  });
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("editor");
+  
+  const { user } = useAuth();
+  const router = useRouter();
+  const supabase = createClient();
+
+  const handleInputChange = (field: keyof PromptFormData, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleTagsChange = (tagsString: string) => {
+    const tags = tagsString.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    setFormData(prev => ({
+      ...prev,
+      tags
+    }));
+  };
+
+  const handleModelSettingsChange = (field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      model_settings: {
+        ...prev.model_settings,
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      toast.error("You must be logged in to create a prompt");
+      return;
+    }
+
+    if (!formData.title.trim()) {
+      toast.error("Please enter a title for your prompt");
+      return;
+    }
+
+    if (!formData.content.trim()) {
+      toast.error("Please enter content for your prompt");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .insert({
+          title: formData.title.trim(),
+          description: formData.description.trim() || null,
+          content: formData.content.trim(),
+          prompt_type: formData.prompt_type,
+          visibility: formData.visibility,
+          tags: formData.tags,
+          model_settings: formData.model_settings,
+          owner_id: user.id
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating prompt:', error);
+        toast.error("Failed to create prompt");
+        return;
+      }
+
+      toast.success("Prompt created successfully!");
+      router.push(`/dashboard/prompts/${data.id}`);
+    } catch (error) {
+      console.error('Error creating prompt:', error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <DashboardHeader 
@@ -42,12 +158,20 @@ export default function NewPromptPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input id="title" placeholder="Enter a descriptive title" />
+              <Label htmlFor="title">Title *</Label>
+              <Input 
+                id="title" 
+                placeholder="Enter a descriptive title"
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="prompt-type">Prompt Type</Label>
-              <Select defaultValue="standard">
+              <Select 
+                value={formData.prompt_type} 
+                onValueChange={(value: PromptType) => handleInputChange('prompt_type', value)}
+              >
                 <SelectTrigger id="prompt-type">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -62,23 +186,46 @@ export default function NewPromptPage() {
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" placeholder="A brief description of what this prompt does" />
+            <Textarea 
+              id="description" 
+              placeholder="A brief description of what this prompt does"
+              value={formData.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="tags">Tags</Label>
-            <Input id="tags" placeholder="Enter tags separated by commas" />
+            <Input 
+              id="tags" 
+              placeholder="Enter tags separated by commas"
+              value={formData.tags.join(', ')}
+              onChange={(e) => handleTagsChange(e.target.value)}
+            />
           </div>
         </CardContent>
       </Card>
       
-      <Tabs defaultValue="editor" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="editor">Editor</TabsTrigger>
           <TabsTrigger value="preview">Preview</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <TabsContent value="editor" className="mt-4">
-          <PromptsEditor />
+          <Card>
+            <CardHeader>
+              <CardTitle>Prompt Content</CardTitle>
+              <CardDescription>Enter your prompt content</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Enter your prompt content here..."
+                className="min-h-[300px] font-mono"
+                value={formData.content}
+                onChange={(e) => handleInputChange('content', e.target.value)}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
         <TabsContent value="preview" className="mt-4">
           <Card>
@@ -87,15 +234,20 @@ export default function NewPromptPage() {
               <CardDescription>See how your prompt will look when used</CardDescription>
             </CardHeader>
             <CardContent>
-              <Alert className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                  No content to preview. Please add content in the Editor tab.
-                </AlertDescription>
-              </Alert>
-              <div className="p-4 border rounded-md">
-                <p className="text-muted-foreground text-center my-8">Preview will appear here</p>
-              </div>
+              {!formData.content.trim() ? (
+                <Alert className="mb-4">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>
+                    No content to preview. Please add content in the Editor tab.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="p-4 border rounded-md bg-muted/50">
+                  <div className="whitespace-pre-wrap font-mono text-sm">
+                    {formData.content}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -108,15 +260,20 @@ export default function NewPromptPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="model">Default AI Model</Label>
-                <Select defaultValue="gpt-4">
+                <Select 
+                  value={formData.model_settings.model}
+                  onValueChange={(value) => handleModelSettingsChange('model', value)}
+                >
                   <SelectTrigger id="model">
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
                     <SelectItem value="gpt-4">GPT-4</SelectItem>
-                    <SelectItem value="claude-instant">Claude Instant</SelectItem>
-                    <SelectItem value="claude-2">Claude 2</SelectItem>
+                    <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
+                    <SelectItem value="claude-3-haiku">Claude 3 Haiku</SelectItem>
+                    <SelectItem value="claude-3-sonnet">Claude 3 Sonnet</SelectItem>
+                    <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
                     <SelectItem value="gemini-pro">Gemini Pro</SelectItem>
                   </SelectContent>
                 </Select>
@@ -124,7 +281,10 @@ export default function NewPromptPage() {
               
               <div className="space-y-2">
                 <Label htmlFor="visibility">Visibility</Label>
-                <Select defaultValue="private">
+                <Select 
+                  value={formData.visibility}
+                  onValueChange={(value: VisibilityType) => handleInputChange('visibility', value)}
+                >
                   <SelectTrigger id="visibility">
                     <SelectValue placeholder="Select visibility" />
                   </SelectTrigger>
@@ -136,13 +296,32 @@ export default function NewPromptPage() {
                 </Select>
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="usage-context">Usage Context</Label>
-                <Textarea 
-                  id="usage-context" 
-                  placeholder="Describe when and how this prompt should be used"
-                  className="min-h-[100px]"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="temperature">Temperature</Label>
+                  <Input
+                    id="temperature"
+                    type="number"
+                    min="0"
+                    max="2"
+                    step="0.1"
+                    placeholder="0.7"
+                    value={formData.model_settings.temperature || ''}
+                    onChange={(e) => handleModelSettingsChange('temperature', parseFloat(e.target.value) || undefined)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="max-tokens">Max Tokens</Label>
+                  <Input
+                    id="max-tokens"
+                    type="number"
+                    min="1"
+                    max="8192"
+                    placeholder="2048"
+                    value={formData.model_settings.max_tokens || ''}
+                    onChange={(e) => handleModelSettingsChange('max_tokens', parseInt(e.target.value) || undefined)}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -151,9 +330,11 @@ export default function NewPromptPage() {
       
       <div className="flex justify-end gap-4">
         <Link href="/dashboard/prompts">
-          <Button variant="outline">Cancel</Button>
+          <Button variant="outline" disabled={loading}>Cancel</Button>
         </Link>
-        <Button>Save Prompt</Button>
+        <Button onClick={handleSave} disabled={loading}>
+          {loading ? "Saving..." : "Save Prompt"}
+        </Button>
       </div>
     </div>
   );
