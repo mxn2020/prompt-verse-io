@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -11,22 +11,21 @@ import { StandardEditor } from "@/components/dashboard/prompts/editor/standard-e
 import { StructuredEditor } from "@/components/dashboard/prompts/editor/structured-editor";
 import { ModularizedEditor } from "@/components/dashboard/prompts/editor/modularized-editor";
 import { AdvancedEditor } from "@/components/dashboard/prompts/editor/advanced-editor";
+import type { Prompt } from "@/lib/schemas/prompt";
 
 type PromptStructureType = "standard" | "structured" | "modularized" | "advanced";
 type EditorStyle = "editing" | "viewing" | "commenting" | "suggesting";
 
 export default function PromptEditorPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [promptStructureType, setPromptStructureType] = useState<PromptStructureType>("standard");
   const [editorStyle, setEditorStyle] = useState<EditorStyle>("editing");
 
   useEffect(() => {
-    // In a real app, we would fetch the prompt data here
-    // For now, we'll simulate loading and use URL params
     const type = searchParams.get("type") as PromptStructureType;
     const style = searchParams.get("style") as EditorStyle;
+    const promptId = searchParams.get("promptId");
 
     if (type && ["standard", "structured", "modularized", "advanced"].includes(type)) {
       setPromptStructureType(type);
