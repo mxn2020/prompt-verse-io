@@ -82,14 +82,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .single();
 
       if (error) {
-        console.error('Error creating profile:', error);
-        return null;
+        throw error;
       }
 
       return data;
     } catch (error) {
       console.error('Error creating profile:', error);
-      return null;
+      throw error;
     }
   };
 
@@ -100,25 +99,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    let userProfile = await fetchProfile(supabaseUser.id);
-    
-    // Create profile if it doesn't exist
-    if (!userProfile) {
-      userProfile = await createProfile(supabaseUser);
+    try {
+      let userProfile = await fetchProfile(supabaseUser.id);
+      
+      // Create profile if it doesn't exist
+      if (!userProfile) {
+        userProfile = await createProfile(supabaseUser);
+      }
+
+      const user: User = {
+        id: supabaseUser.id,
+        email: supabaseUser.email,
+        name: userProfile?.name || supabaseUser.user_metadata?.name || undefined,
+        avatarUrl: userProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || undefined,
+        role: userProfile?.role || 'user',
+        planTier: userProfile?.plan_tier || 'free',
+        teamId: userProfile?.team_id || undefined,
+      };
+
+      setUser(user);
+      setProfile(userProfile);
+    } catch (error) {
+      console.error('Error updating user state:', error);
+      toast.error("Failed to load user profile");
     }
-
-    const user: User = {
-      id: supabaseUser.id,
-      email: supabaseUser.email,
-      name: userProfile?.name || supabaseUser.user_metadata?.name || undefined,
-      avatarUrl: userProfile?.avatar_url || supabaseUser.user_metadata?.avatar_url || undefined,
-      role: userProfile?.role || 'user',
-      planTier: userProfile?.plan_tier || 'free',
-      teamId: userProfile?.team_id || undefined,
-    };
-
-    setUser(user);
-    setProfile(userProfile);
   };
 
   useEffect(() => {
@@ -180,13 +184,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data: { user }, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
         throw error;
+      }
+
+      if (user) {
+        await updateUserState(user);
       }
 
       toast.success("Welcome back! You've successfully signed in.");

@@ -101,7 +101,14 @@ export class AuthService {
       .eq('id', userId)
       .single();
 
-    if (error) throw error;
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    
+    // If no profile exists, create one
+    if (!data) {
+      return this.createUserProfile(userId, supabase);
+    }
     
     // Ensure preferences is always an object
     let preferences: Record<string, any> = {};
@@ -113,6 +120,34 @@ export class AuthService {
       ...data,
       preferences,
     };
+  }
+
+  static async createUserProfile(userId: string, supabase: SupabaseClient) {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .insert({
+        id: userId,
+        name: user.user_metadata?.name || null,
+        avatar_url: user.user_metadata?.avatar_url || null,
+        role: 'user',
+        plan_tier: 'free',
+        preferences: {}
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
   }
 
   // Transform Supabase user to our AuthUser type
