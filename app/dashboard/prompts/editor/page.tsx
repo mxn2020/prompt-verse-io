@@ -20,7 +20,7 @@ async function getPrompt(promptId: string, userId: string): Promise<Prompt | nul
 export default async function PromptEditorPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | undefined };
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
   const user = await getCurrentUserServer();
   if (!user) {
