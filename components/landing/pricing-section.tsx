@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useStripe } from "@/hooks/use-stripe";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { products } from "@/stripe-config";
+import { products } from "../../stripe-config";
 
 export function PricingSection() {
   const { createCheckoutSession } = useStripe();
