@@ -12,6 +12,7 @@ export const promptSchema = z.object({
   usage_count: z.number(),
   owner_id: z.string().uuid(),
   workspace_id: z.string().uuid().nullable(),
+  model_settings: z.any(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -23,6 +24,7 @@ export const createPromptSchema = z.object({
   prompt_type: z.enum(['standard', 'structured', 'modularized', 'advanced']).default('standard'),
   visibility: z.enum(['private', 'team', 'public']).default('private'),
   tags: z.array(z.string()).default([]),
+  model_settings: z.any().optional(),
 });
 
 export type Prompt = z.infer<typeof promptSchema>;

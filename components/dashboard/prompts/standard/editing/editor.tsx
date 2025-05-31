@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useCreatePrompt } from "@/hooks/use-prompts";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import type { Prompt } from "@/lib/schemas/prompt";
 
 interface EditorProps {
@@ -95,7 +96,7 @@ export default function StandardEditor({ prompt }: EditorProps) {
                 <Label htmlFor="visibility">Visibility</Label>
                 <Select 
                   value={formData.visibility}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, visibility: value }))}
+                  onValueChange={(value: "private" | "team" | "public") => setFormData(prev => ({ ...prev, visibility: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select visibility" />
