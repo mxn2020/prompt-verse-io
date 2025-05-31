@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { default as nextDynamic } from 'next/dynamic';
 import { getCurrentUserServer } from '@/lib/auth/server';
 import { PromptService } from '@/lib/services/prompt.service';
 import { createClient as createServerClient } from '@/lib/supabase/server';
@@ -27,11 +28,13 @@ export default async function PromptEditorPage({
     redirect('/');
   }
 
-  const promptId = searchParams.promptId;
-  const editorStyle = searchParams.style || 'editing';
+  const resolvedSearchParams = await searchParams;
+
+  const promptId = resolvedSearchParams.promptId;
+  const editorStyle = resolvedSearchParams.style || 'editing';
 
   let prompt: Prompt | null = null;
-  let promptType: string = searchParams.type || 'standard';
+  let promptType: string = resolvedSearchParams.type || 'standard';
 
   if (promptId) {
     prompt = await getPrompt(promptId, user.id);
@@ -53,12 +56,12 @@ export default async function PromptEditorPage({
   }
 
   // Dynamic import of the editor component based on type and style
-  const EditorComponent = dynamic(() => 
+  const EditorComponent = nextDynamic(() => 
     import(`@/components/dashboard/prompts/${promptType}/${editorStyle}/editor`).catch(() => {
       // Fallback to standard editor if specific component doesn't exist
       return import(`@/components/dashboard/prompts/standard/${editorStyle}/editor`);
     })
-  );
+  ) as React.ComponentType<{ prompt: Prompt | null }>;
 
   return <EditorComponent prompt={prompt} />;
 }
