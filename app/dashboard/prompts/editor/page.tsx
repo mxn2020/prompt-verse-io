@@ -21,6 +21,7 @@ export default function PromptEditorPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [promptStructureType, setPromptStructureType] = useState<PromptStructureType>("standard");
   const [editorStyle, setEditorStyle] = useState<EditorStyle>("editing");
+  const [prompt, setPrompt] = useState<Prompt | null>(null);
 
   useEffect(() => {
     const type = searchParams.get("type") as PromptStructureType;
@@ -63,7 +64,7 @@ export default function PromptEditorPage() {
       {isLoading ? (
         <PromptEditorSkeleton />
       ) : (
-        <EditorComponent editorStyle={editorStyle} />
+        <EditorComponent editorStyle={editorStyle} prompt={prompt} />
       )}
     </div>
   );
