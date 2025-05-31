@@ -1,9 +1,11 @@
 import { AuthService } from '@/lib/services/auth.service';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import type { User } from '@supabase/supabase-js';
 
 export async function getCurrentUserServer(): Promise<User | null> {
-  return AuthService.getCurrentUserServer();
+  const supabase = await createServerClient();
+  return AuthService.getCurrentUser(supabase);
 }
 
 export async function requireAuth(): Promise<User> {
@@ -15,9 +17,11 @@ export async function requireAuth(): Promise<User> {
 }
 
 export async function getUserProfile(userId: string) {
-  return AuthService.getUserProfile(userId, true);
+  const supabase = await createServerClient();
+  return AuthService.getUserProfile(userId, supabase);
 }
 
 export async function isUserLoggedIn(): Promise<boolean> {
-  return AuthService.isUserLoggedIn(true);
+  const supabase = await createServerClient();
+  return AuthService.isUserLoggedIn(supabase);
 }

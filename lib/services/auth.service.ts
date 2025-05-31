@@ -1,5 +1,3 @@
-import { createClient } from '@/lib/supabase/client';
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import { 
   authUserSchema, 
   type SignUpData, 
@@ -9,11 +7,11 @@ import {
   type AuthUser 
 } from '@/lib/schemas/auth';
 import type { User } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export class AuthService {
   // Client-side auth methods
-  static async signUp(data: SignUpData) {
-    const supabase = createClient();
+  static async signUp(data: SignUpData, supabase: SupabaseClient) {
     
     const { error } = await supabase.auth.signUp({
       email: data.email,
@@ -28,9 +26,7 @@ export class AuthService {
     return { success: true };
   }
 
-  static async signIn(data: SignInData) {
-    const supabase = createClient();
-    
+  static async signIn(data: SignInData, supabase: SupabaseClient) {
     const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
@@ -44,18 +40,14 @@ export class AuthService {
     };
   }
 
-  static async signOut() {
-    const supabase = createClient();
-    
+  static async signOut(supabase: SupabaseClient) {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     
     return { success: true };
   }
 
-  static async resetPassword(data: ResetPasswordData) {
-    const supabase = createClient();
-    
+  static async resetPassword(data: ResetPasswordData, supabase: SupabaseClient) {
     const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
       redirectTo: `${window.location.origin}/auth/reset-password`,
     });
@@ -65,9 +57,7 @@ export class AuthService {
     return { success: true };
   }
 
-  static async updatePassword(data: UpdatePasswordData) {
-    const supabase = createClient();
-    
+  static async updatePassword(data: UpdatePasswordData, supabase: SupabaseClient) {
     // First verify current password by re-authenticating
     const { data: user } = await supabase.auth.getUser();
     if (!user.user?.email) {
@@ -94,28 +84,17 @@ export class AuthService {
   }
 
   // Server-side auth methods
-  static async getCurrentUser(isServer = false): Promise<User | null> {
-    const supabase = isServer ? await createServerClient() : createClient();
+  static async getCurrentUser(supabase: SupabaseClient): Promise<User | null> {
     const { data: { user } } = await supabase.auth.getUser();
     return user;
   }
 
-  static async getCurrentUserClient(): Promise<User | null> {
-    return this.getCurrentUser(false);
-  }
-
-  static async getCurrentUserServer(): Promise<User | null> {
-    return this.getCurrentUser(true);
-  }
-
-  static async isUserLoggedIn(isServer = false): Promise<boolean> {
-    const user = await this.getCurrentUser(isServer);
+  static async isUserLoggedIn(supabase: SupabaseClient): Promise<boolean> {
+    const user = await this.getCurrentUser(supabase);
     return !!user;
   }
 
-  static async getUserProfile(userId: string, isServer = false) {
-    const supabase = isServer ? await createServerClient() : createClient();
-    
+  static async getUserProfile(userId: string, supabase: SupabaseClient) {
     const { data, error } = await supabase
       .from('user_profiles')
       .select('*')

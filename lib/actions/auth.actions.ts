@@ -1,6 +1,7 @@
 'use server';
 
 import { AuthService } from '@/lib/services/auth.service';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import type { 
   SignUpData, 
@@ -11,27 +12,33 @@ import type {
 import type { User } from '@supabase/supabase-js';
 
 export async function signUpAction(data: SignUpData) {
-  return AuthService.signUp(data);
+  const supabase = await createServerClient();
+  return AuthService.signUp(data, supabase);
 }
 
 export async function signInAction(data: SignInData) {
-  return AuthService.signIn(data);
+  const supabase = await createServerClient();
+  return AuthService.signIn(data, supabase);
 }
 
 export async function signOutAction() {
-  return AuthService.signOut();
+  const supabase = await createServerClient();
+  return AuthService.signOut(supabase);
 }
 
 export async function resetPasswordAction(data: ResetPasswordData) {
-  return AuthService.resetPassword(data);
+  const supabase = await createServerClient();
+  return AuthService.resetPassword(data, supabase);
 }
 
 export async function updatePasswordAction(data: UpdatePasswordData) {
-  return AuthService.updatePassword(data);
+  const supabase = await createServerClient();
+  return AuthService.updatePassword(data, supabase);
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  return AuthService.getCurrentUserServer();
+  const supabase = await createServerClient();
+  return AuthService.getCurrentUser(supabase);
 }
 
 export async function requireAuth(): Promise<User> {
@@ -43,11 +50,13 @@ export async function requireAuth(): Promise<User> {
 }
 
 export async function getUserProfile(userId: string) {
-  return AuthService.getUserProfile(userId, true);
+  const supabase = await createServerClient();
+  return AuthService.getUserProfile(userId, supabase);
 }
 
 export async function isUserLoggedIn(): Promise<boolean> {
-  return AuthService.isUserLoggedIn(true);
+  const supabase = await createServerClient();
+  return AuthService.isUserLoggedIn(supabase);
 }
 
 // Redirect helpers

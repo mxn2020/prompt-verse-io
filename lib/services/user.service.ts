@@ -1,10 +1,8 @@
-import { createClient } from '@/lib/supabase/client';
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import { userProfileSchema, type UpdateProfileData } from '@/lib/schemas/user';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export class UserService {
-  static async getProfile(userId: string, isServer = false) {
-    const supabase = isServer ? await createServerClient() : createClient();
+  static async getProfile(userId: string, supabase: SupabaseClient) {
     
     const { data, error } = await supabase
       .from('user_profiles')
@@ -16,9 +14,7 @@ export class UserService {
     return userProfileSchema.parse(data);
   }
 
-  static async updateProfile(userId: string, updates: UpdateProfileData) {
-    const supabase = createClient();
-    
+  static async updateProfile(userId: string, updates: UpdateProfileData, supabase: SupabaseClient) {
     const { data, error } = await supabase
       .from('user_profiles')
       .update(updates)
@@ -30,9 +26,7 @@ export class UserService {
     return userProfileSchema.parse(data);
   }
 
-  static async uploadAvatar(userId: string, file: File) {
-    const supabase = createClient();
-    
+  static async uploadAvatar(userId: string, file: File, supabase: SupabaseClient) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}/avatar.${fileExt}`;
 

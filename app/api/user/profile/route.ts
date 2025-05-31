@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserServer } from '@/lib/auth/server';
 import { UserService } from '@/lib/services/user.service';
+import { createClient as createServerClient } from '@/lib/supabase/server';
 import { updateProfileSchema } from '@/lib/schemas/user';
 
 export async function GET() {
@@ -10,7 +11,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const profile = await UserService.getProfile(user.id, true);
+    const supabase = await createServerClient();
+    const profile = await UserService.getProfile(user.id, supabase);
     return NextResponse.json(profile);
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -28,7 +30,8 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const validatedData = updateProfileSchema.parse(body);
 
-    const updatedProfile = await UserService.updateProfile(user.id, validatedData);
+    const supabase = await createServerClient();
+    const updatedProfile = await UserService.updateProfile(user.id, validatedData, supabase);
     return NextResponse.json(updatedProfile);
   } catch (error) {
     console.error('Error updating profile:', error);

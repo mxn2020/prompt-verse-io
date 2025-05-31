@@ -8,8 +8,8 @@ export {
 
 // Client-side exports
 export {
-  getCurrentUserClient,
-  getUserProfileClient,
+  getCurrentUser,
+  getUserProfile as getUserProfileClient,
 } from './client';
 
 // Guards

@@ -1,9 +1,8 @@
-import { createClient as createServerClient } from '@/lib/supabase/server';
 import { promptSchema, type CreatePromptData } from '@/lib/schemas/prompt';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export class PromptService {
-  static async getPrompts(userId: string, isServer = false) {
-    const supabase = await createServerClient();
+  static async getPrompts(userId: string, supabase: SupabaseClient) {
 
     const { data, error } = await supabase
       .from('prompts')
@@ -15,9 +14,7 @@ export class PromptService {
     return data.map(prompt => promptSchema.parse(prompt));
   }
 
-  static async getPrompt(promptId: string, userId: string, isServer = false) {
-    const supabase = await createServerClient();
-    
+  static async getPrompt(promptId: string, userId: string, supabase: SupabaseClient) {
     const { data, error } = await supabase
       .from('prompts')
       .select('*')
@@ -29,9 +26,7 @@ export class PromptService {
     return promptSchema.parse(data);
   }
 
-  static async createPrompt(promptData: CreatePromptData, userId: string) {
-    const supabase = await createServerClient();
-    
+  static async createPrompt(promptData: CreatePromptData, userId: string, supabase: SupabaseClient) {
     const { data, error } = await supabase
       .from('prompts')
       .insert({
@@ -45,9 +40,7 @@ export class PromptService {
     return promptSchema.parse(data);
   }
 
-  static async updatePrompt(promptId: string, updates: Partial<CreatePromptData>) {
-    const supabase = await createServerClient();
-    
+  static async updatePrompt(promptId: string, updates: Partial<CreatePromptData>, supabase: SupabaseClient) {
     const { data, error } = await supabase
       .from('prompts')
       .update(updates)
@@ -59,9 +52,7 @@ export class PromptService {
     return promptSchema.parse(data);
   }
 
-  static async deletePrompt(promptId: string) {
-    const supabase = await createServerClient();
-    
+  static async deletePrompt(promptId: string, supabase: SupabaseClient) {
     const { error } = await supabase
       .from('prompts')
       .delete()
@@ -70,9 +61,7 @@ export class PromptService {
     if (error) throw error;
   }
 
-  static async toggleStar(promptId: string, starred: boolean) {
-    const supabase = await createServerClient();
-    
+  static async toggleStar(promptId: string, starred: boolean, supabase: SupabaseClient) {
     const { data, error } = await supabase
       .from('prompts')
       .update({ starred })

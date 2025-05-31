@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { queryKeys } from '@/lib/query-keys';
 import { AuthService } from '@/lib/services/auth.service';
+import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import type { 
   SignUpData, 
@@ -14,7 +15,10 @@ export function useSignUp() {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: (data: SignUpData) => AuthService.signUp(data),
+    mutationFn: (data: SignUpData) => {
+      const supabase = createClient();
+      return AuthService.signUp(data, supabase);
+    },
     onSuccess: () => {
       toast.success('Account created! Please check your email to confirm your account.');
       router.push('/login');
@@ -31,7 +35,10 @@ export function useSignIn() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: SignInData) => AuthService.signIn(data),
+    mutationFn: (data: SignInData) => {
+      const supabase = createClient();
+      return AuthService.signIn(data, supabase);
+    },
     onSuccess: (result) => {
       const authUser = AuthService.transformUser(result.user);
       
@@ -55,7 +62,10 @@ export function useSignOut() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => AuthService.signOut(),
+    mutationFn: () => {
+      const supabase = createClient();
+      return AuthService.signOut(supabase);
+    },
     onSuccess: () => {
       // Clear all auth-related queries
       queryClient.setQueryData(queryKeys.auth.currentUser(), null);
@@ -78,7 +88,10 @@ export function useSignOut() {
 
 export function useResetPassword() {
   return useMutation({
-    mutationFn: (data: ResetPasswordData) => AuthService.resetPassword(data),
+    mutationFn: (data: ResetPasswordData) => {
+      const supabase = createClient();
+      return AuthService.resetPassword(data, supabase);
+    },
     onSuccess: () => {
       toast.success('Password reset email sent! Please check your inbox.');
     },
@@ -93,7 +106,10 @@ export function useUpdatePassword() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: UpdatePasswordData) => AuthService.updatePassword(data),
+    mutationFn: (data: UpdatePasswordData) => {
+      const supabase = createClient();
+      return AuthService.updatePassword(data, supabase);
+    },
     onSuccess: () => {
       // Invalidate auth queries in case user data changed
       queryClient.invalidateQueries({ queryKey: queryKeys.auth.all });
