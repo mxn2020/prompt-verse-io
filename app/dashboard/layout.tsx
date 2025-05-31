@@ -7,6 +7,11 @@ interface DashboardLayoutProps {
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const user = await requireAuth();
+
+  if (!user) {
+    // If user is not authenticated, redirect to login
+    return null; // This will be handled by the requireAuth function
+  }
   const profile = await getUserProfile(user.id);
 
   return (
