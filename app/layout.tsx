@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from '@/components/auth/auth-provider';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
-import { ReactQueryProvider } from '@/providers/react-query-provider';
+import { QueryProvider } from '@/components/providers/query-provider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} min-h-screen flex flex-col antialiased`}>
-        <ReactQueryProvider>
+        <QueryProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -39,7 +39,7 @@ export default function RootLayout({
               <Toaster />
             </AuthProvider>
           </ThemeProvider>
-        </ReactQueryProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Bookmark, Edit, MessageSquare, MoreHorizontal, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,91 +12,44 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
-import type { Database } from "@/lib/supabase/types";
+import { usePrompts } from "@/lib/queries/prompt.queries";
+import { useTogglePromptStar, useDeletePrompt, useDuplicatePrompt } from "@/lib/mutations/prompt.mutations";
+import type { Prompt } from "@/lib/schemas/prompt";
 
-type Prompt = Database['public']['Tables']['prompts']['Row'] & {
-  user_profiles: Database['public']['Tables']['user_profiles']['Row'];
-};
+interface RecentPromptsProps {
+  initialPrompts?: Prompt[];
+}
 
-export function RecentPrompts() {
-  const [prompts, setPrompts] = useState<Prompt[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  const supabase = createClient();
+export function RecentPrompts({ initialPrompts = [] }: RecentPromptsProps) {
+  const { data: prompts = initialPrompts, isLoading } = usePrompts();
+  const toggleStar = useTogglePromptStar();
+  const deletePrompt = useDeletePrompt();
+  const duplicatePrompt = useDuplicatePrompt();
 
-  useEffect(() => {
-    const fetchRecentPrompts = async () => {
-      if (!user) return;
+  const recentPrompts = prompts.slice(0, 5);
 
-      try {
-        const { data, error } = await supabase
-          .from('prompts')
-          .select(`
-            *,
-            user_profiles!prompts_owner_id_fkey(*)
-          `)
-          .eq('owner_id', user.id)
-          .order('updated_at', { ascending: false })
-          .limit(5);
+  const handleToggleStar = (promptId: string, currentStarred: boolean) => {
+    toggleStar.mutate({ promptId, starred: !currentStarred });
+  };
 
-        if (error) {
-          console.error('Error fetching recent prompts:', error);
-          return;
-        }
-
-        setPrompts(
-          (data || []).map((prompt: any) => ({
-            ...prompt,
-            user_profiles: prompt.user_profiles && !('error' in prompt.user_profiles)
-              ? prompt.user_profiles
-              : {
-                  avatar_url: null,
-                  created_at: "",
-                  id: "",
-                  name: null,
-                  plan_tier: "",
-                  preferences: {},
-                  role: "",
-                  team_id: null,
-                  updated_at: ""
-                }
-          }))
-        );
-      } catch (error) {
-        console.error('Error fetching recent prompts:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRecentPrompts();
-  }, [user, supabase]);
-
-  const toggleStar = async (promptId: string, currentStarred: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('prompts')
-        .update({ starred: !currentStarred })
-        .eq('id', promptId);
-
-      if (error) {
-        console.error('Error toggling star:', error);
-        return;
-      }
-
-      setPrompts(prev => prev.map(prompt => 
-        prompt.id === promptId 
-          ? { ...prompt, starred: !currentStarred }
-          : prompt
-      ));
-    } catch (error) {
-      console.error('Error toggling star:', error);
+  const handleDelete = (promptId: string) => {
+    if (confirm('Are you sure you want to delete this prompt?')) {
+      deletePrompt.mutate(promptId);
     }
   };
 
-  if (loading) {
+  const handleDuplicate = (prompt: Prompt) => {
+    duplicatePrompt.mutate({
+      title: `${prompt.title} (Copy)`,
+      description: prompt.description,
+      content: prompt.content,
+      prompt_type: prompt.prompt_type,
+      visibility: prompt.visibility,
+      tags: prompt.tags,
+    });
+  };
+
+  if (isLoading) {
     return (
       <div className="space-y-4">
         {[...Array(4)].map((_, i) => (
@@ -117,7 +69,7 @@ export function RecentPrompts() {
     );
   }
 
-  if (prompts.length === 0) {
+  if (recentPrompts.length === 0) {
     return (
       <div className="text-center py-6">
         <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -131,7 +83,7 @@ export function RecentPrompts() {
 
   return (
     <div className="space-y-4">
-      {prompts.map((prompt) => (
+      {recentPrompts.map((prompt) => (
         <div
           key={prompt.id}
           className="flex items-center justify-between space-x-4 rounded-md border p-4"
@@ -153,19 +105,18 @@ export function RecentPrompts() {
             </div>
           </div>
           <div className="flex items-center">
-            <Avatar className="h-6 w-6">
-              <AvatarImage src={prompt.user_profiles?.avatar_url || ''} alt={prompt.user_profiles?.name || 'User'} />
-              <AvatarFallback className="text-[10px]">
-                {prompt.user_profiles?.name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
             <Button 
               variant="ghost" 
               size="icon" 
               className="ml-2"
-              onClick={() => toggleStar(prompt.id, prompt.starred)}
+              onClick={() => handleToggleStar(prompt.id, prompt.starred)}
+              disabled={toggleStar.isPending}
             >
-              <Star className={`h-4 w-4 ${prompt.starred ? "fill-primary text-primary" : "text-muted-foreground"}`} />
+              <Star 
+                className={`h-4 w-4 ${
+                  prompt.starred ? "fill-primary text-primary" : "text-muted-foreground"
+                }`} 
+              />
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -184,12 +135,19 @@ export function RecentPrompts() {
                     Edit
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleDuplicate(prompt)}
+                  disabled={duplicatePrompt.isPending}
+                >
                   <Bookmark className="mr-2 h-4 w-4" />
                   Duplicate
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => handleDelete(prompt.id)}
+                  className="text-destructive"
+                  disabled={deletePrompt.isPending}
+                >
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -200,4 +158,3 @@ export function RecentPrompts() {
     </div>
   );
 }
-

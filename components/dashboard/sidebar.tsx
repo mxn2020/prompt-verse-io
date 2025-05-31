@@ -4,9 +4,32 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { Book, BoxSelect, Flower as Flow, FolderKanban, Laptop, LayoutDashboard, MessageSquare, Puzzle, Settings, Users, Workflow, Layers, Bot } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Book, 
+  BoxSelect, 
+  Flower as Flow, 
+  FolderKanban, 
+  Laptop, 
+  LayoutDashboard, 
+  MessageSquare, 
+  Puzzle, 
+  Settings, 
+  Users, 
+  Workflow, 
+  Layers, 
+  Bot 
+} from "lucide-react";
+import type { User } from "@supabase/supabase-js";
+import type { UserProfile } from "@/lib/schemas/user";
 
-export function DashboardSidebar() {
+interface DashboardSidebarProps {
+  user: User;
+  profile: UserProfile;
+}
+
+export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
   const pathname = usePathname();
   
   return (
@@ -17,6 +40,29 @@ export function DashboardSidebar() {
           <span>Prompt-Verse</span>
         </Link>
       </div>
+      
+      {/* User Info Section */}
+      <div className="border-b p-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={profile.avatar_url || ''} alt={profile.name || 'User'} />
+            <AvatarFallback className="text-xs">
+              {profile.name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {profile.name || user.email}
+            </p>
+            <div className="flex items-center gap-1">
+              <Badge variant="secondary" className="text-xs capitalize">
+                {profile.plan_tier}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <div className="flex-1 overflow-auto py-2">
         <nav className="grid items-start px-2 text-sm font-medium">
           <SidebarLink href="/dashboard" icon={LayoutDashboard} active={pathname === "/dashboard"}>
@@ -60,6 +106,13 @@ export function DashboardSidebar() {
             Settings
           </SidebarLink>
         </nav>
+      </div>
+      
+      {/* Footer with account link */}
+      <div className="border-t p-2">
+        <SidebarLink href="/account" icon={Settings} active={pathname.includes("/account")}>
+          Account Settings
+        </SidebarLink>
       </div>
     </div>
   );
