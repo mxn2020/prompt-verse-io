@@ -28,25 +28,21 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: { user }, error } = await supabase.auth.getUser()
-  
-  // Debug logging (remove in production)
-  console.log('Middleware - Path:', request.nextUrl.pathname)
-  console.log('Middleware - User:', user ? 'authenticated' : 'not authenticated')
-  console.log('Middleware - Auth error:', error)
-  console.log('Middleware - Is auth route:', isAuthRoute)
-  console.log('Middleware - Is protected route:', isProtectedRoute)
 
   if (isProtectedRoute && !user) {
-    // Redirect to login if accessing protected route without session
-    const redirectUrl = new URL('/login', request.url)
-    redirectUrl.searchParams.set('redirectedFrom', request.nextUrl.pathname)
-    console.log('Middleware - Redirecting to login:', redirectUrl.toString())
-    return NextResponse.redirect(redirectUrl)
+    // Clear any existing auth cookies
+    const redirectUrl = new URL('/', request.url)
+    const response = NextResponse.redirect(redirectUrl)
+    
+    // Clear auth cookies
+    response.cookies.delete('sb-access-token')
+    response.cookies.delete('sb-refresh-token')
+    
+    return response
   }
 
   if (isAuthRoute && user) {
     // Redirect to dashboard if accessing auth routes while logged in
-    console.log('Middleware - Redirecting to dashboard')
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

@@ -125,9 +125,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const fetchUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // Clear auth state and redirect to home
+          setUser(null);
+          setProfile(null);
+          router.push('/');
+          return;
+        }
         await updateUserState(session?.user || null);
       } catch (error) {
         console.error('Error fetching session:', error);
+        // Clear auth state and redirect to home on error
+        setUser(null);
+        setProfile(null);
+        router.push('/');
       } finally {
         setLoading(false);
       }
@@ -137,7 +148,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        await updateUserState(session?.user || null);
+        if (!session) {
+          // Clear auth state and redirect to home when session is lost
+          setUser(null);
+          setProfile(null);
+          router.push('/');
+        } else {
+          await updateUserState(session?.user || null);
+        }
         setLoading(false);
       }
     );
