@@ -37,7 +37,7 @@ export function DashboardHeader() {
               <DropdownMenuLabel>{user?.name || 'User'}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/account">Account Settings</Link>
+                <Link href="/dashboard/account">Account Settings</Link>
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onSelect={async (event) => {

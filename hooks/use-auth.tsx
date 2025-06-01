@@ -126,19 +126,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
-          // Clear auth state and redirect to home
+          // Clear auth state but don't redirect - let server-side auth handle redirects
           setUser(null);
           setProfile(null);
-          router.push('/');
           return;
         }
         await updateUserState(session?.user || null);
       } catch (error) {
         console.error('Error fetching session:', error);
-        // Clear auth state and redirect to home on error
+        // Clear auth state but don't redirect - let server-side auth handle redirects
         setUser(null);
         setProfile(null);
-        router.push('/');
       } finally {
         setLoading(false);
       }
@@ -149,10 +147,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!session) {
-          // Clear auth state and redirect to home when session is lost
+          // Clear auth state but don't redirect - let server-side auth handle redirects
           setUser(null);
           setProfile(null);
-          router.push('/');
         } else {
           await updateUserState(session?.user || null);
         }
@@ -222,8 +219,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      console.log('Starting sign out process...');
-      
       // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       
@@ -232,20 +227,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
       
-      console.log('Supabase sign out successful');
-      
       // Clear local state immediately
       setUser(null);
       setProfile(null);
-      console.log('User state cleared');
       
       // Navigate to home page
       router.push('/');
-      console.log('Redirecting to home page');
       
       // Refresh the router to ensure clean state
       router.refresh();
-      console.log('Router refresh called');
       
       // Show success message
       toast.success("You've been successfully signed out.");

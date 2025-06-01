@@ -29,9 +29,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 import type { Database } from "@/lib/supabase/types";
 
 type Prompt = Database['public']['Tables']['prompts']['Row'] & {
@@ -43,9 +54,12 @@ type Prompt = Database['public']['Tables']['prompts']['Row'] & {
 export function PromptsList() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [activeTab, setActiveTab] = useState("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [promptToDelete, setPromptToDelete] = useState<string | null>(null);
   const { user } = useAuth();
   const supabase = createClient();
 
@@ -85,9 +99,11 @@ export function PromptsList() {
 
         if (error) {
           console.error('Error fetching prompts:', error);
+          setError('Failed to load prompts. Please try again.');
           return;
         }
 
+        setError(null);
         let filteredData = data || [];
 
         // Apply search filter
@@ -102,6 +118,7 @@ export function PromptsList() {
         setPrompts(filteredData);
       } catch (error) {
         console.error('Error fetching prompts:', error);
+        setError('Failed to load prompts. Please try again.');
       } finally {
         setLoading(false);
       }
@@ -133,8 +150,6 @@ export function PromptsList() {
   };
 
   const deletePrompt = async (promptId: string) => {
-    if (!confirm('Are you sure you want to delete this prompt?')) return;
-
     try {
       const { error } = await supabase
         .from('prompts')
@@ -143,12 +158,70 @@ export function PromptsList() {
 
       if (error) {
         console.error('Error deleting prompt:', error);
+        toast.error('Failed to delete prompt');
         return;
       }
 
       setPrompts(prev => prev.filter(prompt => prompt.id !== promptId));
+      toast.success('Prompt deleted successfully');
     } catch (error) {
       console.error('Error deleting prompt:', error);
+      toast.error('Failed to delete prompt');
+    }
+  };
+
+  const duplicatePrompt = async (prompt: Prompt) => {
+    if (!user) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('prompts')
+        .insert({
+          title: `${prompt.title} (Copy)`,
+          content: prompt.content,
+          description: prompt.description,
+          prompt_type: prompt.prompt_type,
+          visibility: prompt.visibility,
+          tags: prompt.tags,
+          model_settings: prompt.model_settings,
+          owner_id: user.id,
+        })
+        .select(`
+          *,
+          prompt_modules(
+            modules(*)
+          )
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error duplicating prompt:', error);
+        toast.error('Failed to duplicate prompt');
+        return;
+      }
+
+      // Add the new prompt to the beginning of the list
+      setPrompts(prev => [data as Prompt, ...prev]);
+      toast.success('Prompt duplicated successfully');
+    } catch (error) {
+      console.error('Error duplicating prompt:', error);
+      toast.error('Failed to duplicate prompt');
+    }
+  };
+
+  const handleDeleteClick = (promptId: string) => {
+    setPromptToDelete(promptId);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (promptToDelete) {
+      await deletePrompt(promptToDelete);
+      setDeleteDialogOpen(false);
+      setPromptToDelete(null);
     }
   };
 
@@ -203,14 +276,25 @@ export function PromptsList() {
         </div>
       </div>
       
-      {prompts.length === 0 ? (
+      {error && (
+        <div className="text-center py-12">
+          <p className="text-destructive mb-4">{error}</p>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+      )}
+      
+      {!loading && !error && prompts.length === 0 && (
         <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">No prompts found.</p>
           <Button asChild>
             <Link href="/dashboard/prompts/new/select-type">Create your first prompt</Link>
           </Button>
         </div>
-      ) : (
+      )}
+      
+      {!loading && !error && prompts.length > 0 && (
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -280,19 +364,19 @@ export function PromptsList() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href={`/dashboard/prompts/${prompt.id}/edit`}>
+                          <Link href={`/dashboard/prompts/editor?promptId=${prompt.id}&type=${prompt.prompt_type}&style=editing`}>
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => duplicatePrompt(prompt)}>
                           <Copy className="mr-2 h-4 w-4" />
                           Duplicate
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem 
                           className="text-destructive"
-                          onClick={() => deletePrompt(prompt.id)}
+                          onClick={() => handleDeleteClick(prompt.id)}
                         >
                           <Trash className="mr-2 h-4 w-4" />
                           Delete
@@ -306,6 +390,29 @@ export function PromptsList() {
           </Table>
         </div>
       )}
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your prompt
+              and remove all associated data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPromptToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

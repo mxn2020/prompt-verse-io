@@ -76,7 +76,7 @@ const promptTypes: PromptTypeOption[] = [
 export default function SelectPromptTypePage() {
   const [selectedType, setSelectedType] = useState<PromptType | null>(null);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const supabase = createClient();
 
@@ -86,6 +86,12 @@ export default function SelectPromptTypePage() {
       return;
     }
 
+    // Wait for auth to load
+    if (authLoading) {
+      toast.error("Please wait while we verify your authentication");
+      return;
+    }
+    
     if (!user) {
       toast.error("You must be logged in to create a prompt");
       return;
@@ -248,10 +254,10 @@ ELSE:
         </Link>
         <Button 
           onClick={handleCreatePrompt} 
-          disabled={!selectedType || loading}
+          disabled={!selectedType || loading || authLoading}
           className="min-w-[140px]"
         >
-          {loading ? "Creating..." : "Create Prompt"}
+          {loading ? "Creating..." : authLoading ? "Loading..." : "Create Prompt"}
         </Button>
       </div>
     </div>
