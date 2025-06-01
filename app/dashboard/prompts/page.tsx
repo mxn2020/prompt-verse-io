@@ -15,7 +15,7 @@ export default function PromptsPage() {
         text="Create and manage your prompts."
       >
         <Link
-          href="/dashboard/prompts/new"
+          href="/dashboard/prompts/new/select-type"
           className={cn(
             buttonVariants({ variant: "default" }),
             "gap-1"

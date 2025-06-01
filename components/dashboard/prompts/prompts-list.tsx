@@ -207,7 +207,7 @@ export function PromptsList() {
         <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">No prompts found.</p>
           <Button asChild>
-            <Link href="/dashboard/prompts/new">Create your first prompt</Link>
+            <Link href="/dashboard/prompts/new/select-type">Create your first prompt</Link>
           </Button>
         </div>
       ) : (

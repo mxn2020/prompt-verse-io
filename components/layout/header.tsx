@@ -221,7 +221,7 @@ ListItem.displayName = "ListItem";
 const features = [
   {
     title: "Prompt Builder",
-    href: "/dashboard/prompts/new",
+    href: "/dashboard/prompts/new/select-type",
     description: "Create and manage prompts with our intuitive builder interface."
   },
   {

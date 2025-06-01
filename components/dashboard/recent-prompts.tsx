@@ -75,7 +75,7 @@ export function RecentPrompts({ initialPrompts = [] }: RecentPromptsProps) {
         <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
         <p className="text-muted-foreground">No prompts yet. Create your first prompt to get started!</p>
         <Button asChild className="mt-4">
-          <Link href="/dashboard/prompts/new">Create Prompt</Link>
+          <Link href="/dashboard/prompts/new/select-type">Create Prompt</Link>
         </Button>
       </div>
     );
