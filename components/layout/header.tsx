@@ -105,7 +105,16 @@ export function Header() {
                     <Link href="/settings">Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()}>
+                  <DropdownMenuItem 
+                    onSelect={async (event) => {
+                      event.preventDefault();
+                      try {
+                        await signOut();
+                      } catch (error) {
+                        console.error('Logout error:', error);
+                      }
+                    }}
+                  >
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -154,7 +163,13 @@ export function Header() {
                     <Link href="/settings" className="flex items-center py-2">
                       Settings
                     </Link>
-                    <Button variant="ghost" className="justify-start px-2" onClick={() => signOut()}>
+                    <Button variant="ghost" className="justify-start px-2" onClick={async () => {
+                      try {
+                        await signOut();
+                      } catch (error) {
+                        console.error('Logout error:', error);
+                      }
+                    }}>
                       Log out
                     </Button>
                   </>

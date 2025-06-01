@@ -222,15 +222,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      console.log('Starting sign out process...');
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Supabase signOut error:', error);
+        throw error;
+      }
+      
+      console.log('Supabase sign out successful');
+      
+      // Clear local state immediately
       setUser(null);
       setProfile(null);
+      console.log('User state cleared');
+      
+      // Navigate to home page
       router.push('/');
+      console.log('Redirecting to home page');
+      
+      // Refresh the router to ensure clean state
       router.refresh();
+      console.log('Router refresh called');
+      
+      // Show success message
       toast.success("You've been successfully signed out.");
     } catch (error) {
       console.error('Sign out error:', error);
       toast.error("Error signing out");
+      
+      // Even if there's an error, try to clear local state and redirect
+      setUser(null);
+      setProfile(null);
+      router.push('/');
     }
   };
 

@@ -39,7 +39,16 @@ export function DashboardHeader() {
               <DropdownMenuItem asChild>
                 <Link href="/account">Account Settings</Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => signOut()}>
+              <DropdownMenuItem 
+                onSelect={async (event) => {
+                  event.preventDefault();
+                  try {
+                    await signOut();
+                  } catch (error) {
+                    console.error('Logout error:', error);
+                  }
+                }}
+              >
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
